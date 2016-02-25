@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no"/>
+    <title>DuPage County Map</title>
+	<link rel="stylesheet" href="https://js.arcgis.com/3.15/dijit/themes/claro/claro.css">
+    <link rel="stylesheet" href="https://js.arcgis.com/3.15/esri/css/esri.css">
+
+    <style>
+	  html, body {
+        height: 99%;
+        width: 99%;
+        magin: 0;
+		padding:0;
+		}
+		#rightPane{
+			width:20%;
+		}
+		#legendPane{
+			border:solid black 2px;
+		}
+    </style>
+    <script src="https://js.arcgis.com/3.15/"></script>
+    <script>
+      var map; 
+	  require([
+	  "dojo/parser",
+	  "dojo/dom",
+      "dojo/dom-construct",
+      "esri/Color",
+
+      "esri/dijit/Popup",
+      "esri/dijit/PopupTemplate",
+	  "esri/dijit/Legend",
+      "esri/layers/FeatureLayer",
+      "esri/map",
+
+      "esri/symbols/SimpleFillSymbol",
+      "esri/symbols/SimpleLineSymbol",
+	  "esri/renderers/SimpleRenderer",
+	  "esri/renderers/UniqueValueRenderer",
+	  "dijit/layout/BorderContainer",
+	  "dijit/layout/ContentPane",
+	  "dijit/layout/AccordionContainer",
+      "dojo/domReady!"
+	  ], function(parser, dom,domConstruct,Color, Popup, PopupTemplate, Legend,
+					FeatureLayer, Map, SimpleFillSymbol, SimpleLineSymbol,
+					SimpleRenderer, UniqueValueRenderer){
+		parser.parse();
+        map = new Map("map", {
+          basemap: "topo",
+          center: [-88, 41.85], // longitude, latitude
+          zoom: 11
+        });
+		
+		var sls = new SimpleLineSymbol("solid", new Color("#444444"),3);
+		var sfs = new SimpleFillSymbol("solid", sls, new Color([255,255,255,1]));
+		
+		var popupOptions = {
+			fillSymbol: sfs,
+			marginLeft:"20",
+			marginTop:"20"
+		};
+		
+		var popup = new Popup(popupOptions, domConstruct.create("div"));
+		var popupTemplate = new PopupTemplate({
+			"title":"Bike Trails",
+			"fieldInfos":[
+			{
+				"fieldName":"SYSDES",
+				"visible":true,
+				"label":"Trail Name"}
+			,{
+				"fieldName":"FACTYPE",
+				"visible":true,
+				"label":"Facility Type"}
+			,{
+				"fieldName":"SURFACE",
+				"visible":true,
+				"label":"Trail Surface"}
+			,{
+				"fieldName":"STNAME",
+				"visible":true,
+				"label":"Street Name"}
+			,{
+				"fieldName":"FACNAME",
+				"visible":true,
+				"label":"Facility Name"}
+			
+			]
+		});
+		
+		var legendLayers = [];
+		var DuPageBike = new FeatureLayer("http://gis.dupageco.org/arcgis/rest/services/Bike_Trail/MapServer/1",{
+			mode:FeatureLayer.MODE_SNAPSHOT,
+			infoTemplate:popupTemplate,
+			outfields:["*"],
+			id:"cityBike"
+			});
+		
+		legendLayers.push({layer:DuPageBike,title:"City Maintained Bike Trails"});
+		
+		var DupageBound = new FeatureLayer("http://gis.dupageco.org/arcgis/rest/services/Bike_Trail/MapServer/3",{
+		id:"DupageBound"});
+		
+		
+		
+		var CountyBike = new FeatureLayer("http://gis.dupageco.org/arcgis/rest/services/Bike_Trail/MapServer/2",{
+			mode:FeatureLayer.MODE_SNAPSHOT,
+			infoTemplate:popupTemplate,
+			outFields:["*"],
+			id:"countyBike"
+		});
+		
+		legendLayers.push({layer:CountyBike,title:"County Maintained Bike Trails"});
+		legendLayers.push({layer:DupageBound,title:"DuPage County Boundary"});
+		var boundry = new SimpleLineSymbol();
+		boundry.setColor(new Color([64,64,64,1]));
+		boundry.setWidth(5);
+		boundry.setStyle(SimpleLineSymbol.STYLE_SHORTDASHDOT);
+		var bound = new SimpleRenderer(boundry);
+		DupageBound.setRenderer(bound);
+		
+		townBike = new SimpleLineSymbol();
+		townBike.setColor(new Color([0,92,230,1]));
+		townBike.setWidth(3);
+		var bike = new SimpleRenderer(townBike);
+		DuPageBike.setRenderer(bike);
+		
+		var countBike = new SimpleLineSymbol();
+		countBike.setWidth(3);
+
+		var defaultSymobl = countBike;
+		
+		var CountBikeRend = new UniqueValueRenderer(defaultSymobl, "SURFACE");
+		var Aggregate = {
+			value:"Aggregate",
+			symbol:new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,new Color([0,153,0,1]),3)
+		};
+		var Paved = {
+			value:"Paved",
+			symbol:new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,new Color([204,102,0,1]),3)
+		};
+		var unknown = {
+			value:"Unknown",
+			symbol:new SimpleLineSymbol(SimpleLineSymbol.STYLE_SOLID,new Color([255,0,0,1]),3)
+		};
+		CountBikeRend.addValue(Aggregate);
+		CountBikeRend.addValue(Paved);
+		CountBikeRend.addValue(unknown);
+		
+		CountyBike.setRenderer(CountBikeRend);
+		
+	map.on('layers-add-result', function(){
+		var legend = new Legend({
+			map:map,
+			layerInfos:legendLayers
+		}, "legendDiv");
+		legend.startup();
+	});
+		
+      map.addLayers([CountyBike, DuPageBike,DupageBound]);
+	  
+	  
+	  
+	  });
+	  
+	  
+	  
+    </script>
+  </head>
+
+  <body class="claro">
+<div id="content" data-dojo-type="dijit/layout/BorderContainer"
+     data-dojo-props="design:'headline', gutters:true"
+     style="width: 100%; height: 100%; margin: 0;">
+
+  <div id="rightPane"
+       data-dojo-type="dijit/layout/ContentPane"
+       data-dojo-props="region:'right'">
+
+    <div data-dojo-type="dijit/layout/AccordionContainer">
+      <div data-dojo-type="dijit/layout/ContentPane" id="legendPane"
+           data-dojo-props="title:'Legend', selected:false">
+
+        <div id="legendDiv"></div>
+
+      </div>
+
+      
+    </div>
+  </div>
+  <div id="map"
+       data-dojo-type="dijit/layout/ContentPane"
+       data-dojo-props="region:'center'"
+       style="overflow:hidden;">
+  </div>
+</div>
+  </body>
+</html>
